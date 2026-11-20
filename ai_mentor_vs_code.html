@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Mentor: Промпт-инжиниринг тренажері — «28 мектеп-лицей» КММ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+        }
+        .tab-active {
+            border-bottom: 3px solid #4f46e5;
+            color: #4f46e5;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased">
+
+    <!-- Жоғарғы панель (Header) -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="max-w-6xl mx-auto px-4 py-5 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-500/30 p-3 rounded-xl border border-indigo-400/30">
+                    <i class="fas fa-robot text-2xl text-indigo-300"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight">AI-Mentor</h1>
+                    <p id="hdrSubtitle" class="text-indigo-200 text-xs sm:text-sm">Түркістан қаласы • «28 мектеп-лицей» КММ • Фаиз Айгүл Сембайқызы</p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2.5">
+                <!-- Gemini API кілтін баптау батырмасы -->
+                <button type="button" onclick="openApiModal()" class="flex items-center gap-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/40 px-3 py-1.5 rounded-full text-xs font-semibold transition-all">
+                    <i class="fas fa-key"></i> <span id="apiStatusLabel">API Кілт (Демо)</span>
+                </button>
+
+                <!-- Тіл ауыстырғыш (ҚАЗ / РУС) -->
+                <div class="flex items-center bg-white/10 p-1 rounded-full border border-white/20">
+                    <button type="button" onclick="setUiLang('kk')" id="uiLang-kk" class="px-3 py-1 rounded-full text-xs font-bold bg-white text-indigo-950 transition-all">ҚАЗ</button>
+                    <button type="button" onclick="setUiLang('ru')" id="uiLang-ru" class="px-3 py-1 rounded-full text-xs font-bold text-indigo-100 hover:text-white transition-all">РУС</button>
+                </div>
+
+                <!-- Ұпай есептегіші -->
+                <div class="flex items-center gap-2 bg-white/10 px-4 py-1.5 rounded-full border border-white/20">
+                    <i class="fas fa-award text-amber-400"></i>
+                    <span class="text-xs sm:text-sm font-medium">
+                        <span id="hdrScoreLabel">Жинаған ұпай:</span>
+                        <span id="userScore" class="font-bold text-amber-300 text-base">0</span> / <span id="maxScoreLabel">50</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- API Кілт модальді терезесі -->
+    <div id="apiModal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fas fa-key text-amber-500"></i> Google Gemini API Кілті
+                </h3>
+                <button type="button" onclick="closeApiModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+                VS Code немесе браузерде нақты жасанды интеллект жауаптарын алу үшін <strong>Google AI Studio</strong> кілтін енгізіңіз. Кілт тек браузер жадында (<code>localStorage</code>) сақталады. Кілтсіз режимде жүйе <strong>Демо-тәлімгер</strong> ретінде жұмыс істей береді.
+            </p>
+            <input type="password" id="apiKeyInput" placeholder="AIzaSy..." class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-indigo-500 outline-none">
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="clearApiKey()" class="px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl">Тазалау</button>
+                <button type="button" onclick="closeApiModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Жабу</button>
+                <button type="button" onclick="saveApiKey()" class="px-5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl">Сақтау</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Навигация қойындылары -->
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 flex overflow-x-auto">
+            <button type="button" onclick="switchTab('constructor')" id="tab-constructor" class="tab-btn tab-active px-5 py-4 text-sm whitespace-nowrap transition-colors flex items-center gap-2">
+                <i class="fas fa-magic"></i> <span id="tabText-constructor">R-T-F Промпт Конструкторы</span>
+            </button>
+            <button type="button" onclick="switchTab('trainer')" id="tab-trainer" class="tab-btn px-5 py-4 text-sm text-slate-600 hover:text-indigo-600 whitespace-nowrap transition-colors flex items-center gap-2">
+                <i class="fas fa-trophy"></i> <span id="tabText-trainer">Олимпиадалық Тренажер</span>
+            </button>
+            <button type="button" onclick="switchTab('guide')" id="tab-guide" class="tab-btn px-5 py-4 text-sm text-slate-600 hover:text-indigo-600 whitespace-nowrap transition-colors flex items-center gap-2">
+                <i class="fas fa-book-open"></i> <span id="tabText-guide">6–11 сынып Оқулық қоры</span>
+            </button>
+            <button type="button" onclick="switchTab('integrity')" id="tab-integrity" class="tab-btn px-5 py-4 text-sm text-slate-600 hover:text-indigo-600 whitespace-nowrap transition-colors flex items-center gap-2">
+                <i class="fas fa-user-shield text-emerald-600"></i> <span id="tabText-integrity">Академиялық адалдық</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Негізгі мазмұн -->
+    <main class="max-w-6xl mx-auto px-4 py-8">
+
+        <!-- 1-ҚОЙЫНДЫ: R-T-F ПРОМПТ КОНСТРУКТОРЫ -->
+        <section id="section-constructor" class="space-y-6">
+            <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
+                <h2 class="text-base sm:text-lg font-bold text-indigo-950 flex items-center gap-2">
+                    <i class="fas fa-lightbulb text-indigo-600"></i> R-T-F (Role – Task – Format) формуласы
+                </h2>
+                <p class="text-slate-700 text-xs sm:text-sm mt-1.5 leading-relaxed">
+                    Оқушы ЖИ-ден дайын жауап көшірмей, <strong class="text-indigo-700">Рөл (Role)</strong> + <strong class="text-indigo-700">Тапсырма (Task)</strong> + <strong class="text-indigo-700">Формат (Format)</strong> құрылымы арқылы сауатты бағыт алады.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Сол жақ: Параметрлерді енгізу -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">0. Бағдарламалау тілі / Бағыты:</label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="langButtons">
+                            <button type="button" onclick="setLanguage('python', this)" class="lang-btn bg-indigo-600 text-white text-xs font-semibold py-2 px-3 rounded-lg transition-all">Python</button>
+                            <button type="button" onclick="setLanguage('html', this)" class="lang-btn bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold py-2 px-3 rounded-lg transition-all">HTML/CSS</button>
+                            <button type="button" onclick="setLanguage('cpp', this)" class="lang-btn bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold py-2 px-3 rounded-lg transition-all">C++</button>
+                            <button type="button" onclick="setLanguage('sql', this)" class="lang-btn bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold py-2 px-3 rounded-lg transition-all">SQL</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">1. R (Role) — ЖИ рөлі:</label>
+                        <select id="roleSelect" onchange="generatePrompt()" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="Сен тәжірибелі Python бағдарламалаушысы және мектеп оқушыларына түсінікті тілмен үйрететін тәлімгерсің.">Python бағдарламалаушы және тәлімгер</option>
+                            <option value="Сен веб-әзірлеу (HTML, CSS, JavaScript) бойынша аға инженерсің.">Веб-әзірлеу (Frontend) инженері</option>
+                            <option value="Сен C++ тілінде олимпиадалық есептерді талдайтын жаттықтырушысың.">C++ Олимпиадалық жаттықтырушы</option>
+                            <option value="Сен деректер қоры (SQL) сәулетшісісің.">Деректер қоры (SQL) сәулетшісі</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">2. T (Task) — Нақты тапсырма:</label>
+                        <textarea id="taskInput" oninput="generatePrompt()" rows="3" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">Менің Python тілінде жазған кодымдағы қатені табуға көмектес. Бірақ дайын дұрыс кодты бірден жазып берме, қатенің қай жолда екеніне жанама бағыт бер.</textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">3. F (Format) — Жауап форматы:</label>
+                        <select id="formatSelect" onchange="generatePrompt()" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="Жауапты қадам-қадаммен (1, 2, 3), қарапайым мысалдармен және соңында 1 бақылау сұрағымен бер.">Қадам-қадаммен + Бақылау сұрағы</option>
+                            <option value="Жауапты салыстырмалы кесте түрінде (Қате нұсқа | Дұрыс тәсіл | Түсіндірме) ұсын.">Салыстырмалы кесте түрінде</option>
+                            <option value="Қысқа әрі нұсқа 3 кеңес түрінде жаз.">Қысқа 3 кеңес түрінде</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Код үзіндісі / Контекст:</label>
+                        <textarea id="codeInput" oninput="generatePrompt()" rows="3" class="w-full p-3 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none">for i in range(5)
+    print(i * 2)</textarea>
+                    </div>
+                </div>
+
+                <!-- Оң жақ: Промпт нәтижесі және AI-Mentor жауабы -->
+                <div class="bg-slate-900 text-white p-6 rounded-2xl shadow-lg flex flex-col justify-between">
+                    <div>
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Дайын R-T-F Промпт
+                            </span>
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="copyPrompt()" id="copyBtn" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5">
+                                    <i class="far fa-copy"></i> Көшіру
+                                </button>
+                                <button type="button" onclick="runAIPrompt()" id="runAiBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-md">
+                                    <i class="fas fa-play"></i> ЖИ-ден жауап алу
+                                </button>
+                            </div>
+                        </div>
+                        <div id="promptOutput" class="bg-slate-800/80 border border-slate-700 p-4 rounded-xl text-sm text-slate-200 leading-relaxed whitespace-pre-wrap min-h-[150px]"></div>
+
+                        <div id="aiResponseContainer" class="hidden mt-4 pt-4 border-t border-slate-700">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                                    <i class="fas fa-robot mr-1"></i> AI-Mentor Жауабы:
+                                </span>
+                                <span id="aiStatus" class="text-[11px] text-slate-400"></span>
+                            </div>
+                            <div id="aiResponseOutput" class="bg-indigo-950/60 border border-indigo-500/30 p-4 rounded-xl text-sm text-indigo-100 leading-relaxed whitespace-pre-wrap max-h-[300px] overflow-y-auto"></div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                        <span><i class="fas fa-shield-alt text-emerald-400 mr-1"></i> Академиялық адалдық</span>
+                        <span>VS Code Ready</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2-ҚОЙЫНДЫ: PYTHON ОЛИМПИАДАЛЫҚ ТРЕНАЖЕР ЖӘНЕ АДАПТИВТІ ТЕСТ -->
+        <section id="section-trainer" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-indigo-200 space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fas fa-brain text-indigo-600"></i> Python Олимпиадалық Жаттықтырушы (Big-O & Адаптивті тест)
+                    </h3>
+                    <button type="button" onclick="resetQuiz()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-lg">
+                        Қайта бастау
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Есеп шарты және шектеулер (N, Time Limit):</label>
+                        <textarea id="olympProblemInput" rows="4" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none">N &lt;= 10^5 бүтін сандар массиві берілген. Кез келген екі элементтің максималды көбейтіндісін табыңыз. Уақыт шектеуі: 1.0 сек.</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Оқушының Python коды:</label>
+                        <textarea id="olympCodeInput" rows="4" class="w-full p-3 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none">n = int(input())
+a = list(map(int, input().split()))
+ans = -10**18
+for i in range(n):
+    for j in range(i+1, n):
+        ans = max(ans, a[i] * a[j])
+print(ans)</textarea>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="setOlympPreset('tl')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-3 py-1.5 rounded-lg">1-үлгі: Time Limit (O(N²))</button>
+                        <button type="button" onclick="setOlympPreset('binary')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-3 py-1.5 rounded-lg">2-үлгі: Бинарлық іздеу</button>
+                        <button type="button" onclick="setOlympPreset('dp')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-3 py-1.5 rounded-lg">3-үлгі: Динамикалық бағдарламалау</button>
+                    </div>
+                    <button type="button" onclick="runOlympiadCoach()" id="olympCoachBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm">
+                        <i class="fas fa-microchip"></i> Кодты талдау және Есепке сай Тест құру
+                    </button>
+                </div>
+
+                <div id="olympCoachOutputBox" class="hidden bg-slate-900 text-slate-100 p-5 rounded-xl border border-slate-700 space-y-2">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">Жаттықтырушы талдауы:</span>
+                        <span id="olympCoachStatus" class="text-xs text-slate-400"></span>
+                    </div>
+                    <div id="olympCoachResult" class="text-sm leading-relaxed whitespace-pre-wrap text-slate-200"></div>
+                </div>
+            </div>
+
+            <!-- Динамикалық тест сұрақтары -->
+            <div class="space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fas fa-tasks text-indigo-600"></i> Оқушы есебіне негізделген тест (Әр сұрақ — 10 ұпай)
+                    </h3>
+                    <span id="quizContextBadge" class="text-xs bg-emerald-100 text-emerald-800 font-semibold px-3 py-1 rounded-full">
+                        Ағымдағы есеп бойынша құрылған
+                    </span>
+                </div>
+                <div id="dynamicCasesContainer" class="space-y-4"></div>
+            </div>
+
+            <!-- Сертификат генераторы -->
+            <div id="certBox" class="hidden bg-amber-50 border-2 border-amber-300 rounded-2xl p-6 text-center space-y-4 shadow-md">
+                <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-amber-100 text-amber-600 text-2xl">
+                    <i class="fas fa-award"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-900">Құттықтаймыз! Тест тапсырмалары аяқталды!</h3>
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
+                    <input type="text" id="studentNameInput" placeholder="Оқушының аты-жөні..." class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <button type="button" onclick="showCertificate()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-6 py-2.5 rounded-xl whitespace-nowrap">
+                        Сертификат алу
+                    </button>
+                </div>
+
+                <div id="certificateCard" class="hidden mt-6 max-w-xl mx-auto bg-white border-8 border-double border-indigo-900 p-8 rounded-xl shadow-xl text-center space-y-3">
+                    <div class="text-xs font-bold uppercase tracking-widest text-indigo-600">«28 мектеп-лицей» КММ • AI-Mentor</div>
+                    <h4 class="text-3xl font-extrabold text-slate-900">СЕРТИФИКАТ</h4>
+                    <div id="certStudentName" class="text-2xl font-bold text-indigo-800 border-b-2 border-amber-400 inline-block px-6 pb-1">Жас Информатик</div>
+                    <p class="text-sm text-slate-700 leading-relaxed">
+                        «Python олимпиадалық бағдарламалау және R-T-F Промпт-инжиниринг» тренажерін сәтті аяқтағаны үшін беріледі.
+                    </p>
+                    <div class="pt-2 flex items-center justify-between text-xs text-slate-500 border-t border-slate-100">
+                        <span>Нәтиже: <strong id="certFinalScore" class="text-emerald-700">50 / 50 ұпай</strong></span>
+                        <span>Жетекші: Фаиз А.С.</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3-ҚОЙЫНДЫ: 6–11 СЫНЫП ОҚУЛЫҚТАРЫ БОЙЫНША PYTHON ТАҚЫРЫПТАРЫ -->
+        <section id="section-guide" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fab fa-python text-indigo-600"></i> 6–11 сынып оқулықтары бойынша Python ережелері мен мысалдары
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Кез келген тақырыптың үстін басыңыз — кітаптағы ереже, оқулық мысалы және R-T-F промпті ашылады.</p>
+                    </div>
+                    <span id="curriculumCounterBadge" class="text-xs font-semibold bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full self-start sm:self-auto">
+                        12 тақырып • 6–11 сынып
+                    </span>
+                </div>
+
+                <!-- Сынып сүзгі батырмалары -->
+                <div class="flex flex-wrap gap-2" id="gradeFilterButtons">
+                    <button type="button" onclick="filterGrade('all', this)" class="grade-btn bg-indigo-600 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition-all">Барлығы</button>
+                    <button type="button" onclick="filterGrade('6', this)" class="grade-btn bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold px-3.5 py-2 rounded-xl transition-all">6-сынып</button>
+                    <button type="button" onclick="filterGrade('7', this)" class="grade-btn bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold px-3.5 py-2 rounded-xl transition-all">7-сынып</button>
+                    <button type="button" onclick="filterGrade('8', this)" class="grade-btn bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold px-3.5 py-2 rounded-xl transition-all">8-сынып</button>
+                    <button type="button" onclick="filterGrade('9', this)" class="grade-btn bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold px-3.5 py-2 rounded-xl transition-all">9-сынып</button>
+                    <button type="button" onclick="filterGrade('10', this)" class="grade-btn bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold px-3.5 py-2 rounded-xl transition-all">10-сынып</button>
+                    <button type="button" onclick="filterGrade('11', this)" class="grade-btn bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold px-3.5 py-2 rounded-xl transition-all">11-сынып</button>
+                </div>
+
+                <!-- Тақырыптар тізімі -->
+                <div id="pythonCurriculumList" class="space-y-3"></div>
+            </div>
+        </section>
+
+        <!-- 4-ҚОЙЫНДЫ: АКАДЕМИЯЛЫҚ АДАЛДЫҚ (ЖИ-ДЕТЕКТОР) -->
+        <section id="section-integrity" class="hidden space-y-6">
+            <div class="bg-gradient-to-r from-emerald-900 to-teal-900 text-white rounded-2xl p-6 shadow-md">
+                <span class="bg-emerald-400/20 text-emerald-200 border border-emerald-300/30 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                    <i class="fas fa-shield-alt mr-1"></i> <span id="intBadgeText">Мұғалімге арналған бақылау құралы</span>
+                </span>
+                <h2 id="intTitle" class="text-xl font-bold mt-2">Академиялық адалдық және ЖИ-код детекторы</h2>
+                <p id="intDesc" class="text-emerald-100 text-sm mt-1">Оқушы тапсырған кодтың өз бетімен жазылғанын немесе ЖИ-ден көшірілгенін тексеріп, 3 бақылау сұрағын алыңыз.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <label id="intCodeLabel" class="text-sm font-bold text-slate-800">Оқушының Python кодын қойыңыз:</label>
+                        <select id="intGradeSelect" class="text-xs bg-slate-100 border border-slate-300 rounded-lg px-2.5 py-1.5 font-semibold text-slate-700 outline-none">
+                            <option value="6-7 сынып">6–7 сынып</option>
+                            <option value="8-9 сынып" selected>8–9 сынып</option>
+                            <option value="10-11 сынып">10–11 сынып</option>
+                        </select>
+                    </div>
+
+                    <textarea id="integrityCodeInput" rows="8" class="w-full p-4 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl border border-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none">def is_prime(n: int) -> bool:
+    """Checks whether a given integer is a prime number."""
+    if n &lt;= 1:
+        return False
+    for i in range(2, int(n**0.5) + 1):
+        if n % i == 0:
+            return False
+    return True
+
+print([x for x in range(1, 30) if is_prime(x)])</textarea>
+
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex gap-2">
+                            <button type="button" onclick="setIntegritySample('ai')" id="intSampleAiBtn" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold px-3 py-1.5 rounded-lg">1-үлгі: ЖИ жазған код</button>
+                            <button type="button" onclick="setIntegritySample('student')" id="intSampleStuBtn" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-semibold px-3 py-1.5 rounded-lg">2-үлгі: Оқушы коды</button>
+                        </div>
+                        <button type="button" onclick="runIntegrityCheck()" id="runIntegrityBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm">
+                            <i class="fas fa-search"></i> <span id="intRunBtnText">Кодты тексеру және 3 сұрақ құру</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 text-white p-6 rounded-2xl shadow-lg space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <span id="intResultHeader" class="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                            <i class="fas fa-clipboard-check mr-1"></i> Код-аудит нәтижесі
+                        </span>
+                        <span id="intStatusText" class="text-xs text-slate-400">Тексеруге дайын</span>
+                    </div>
+
+                    <div id="intMeterBox" class="hidden bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2">
+                        <div class="flex justify-between text-xs font-bold">
+                            <span id="intProbLabel">ЖИ жазу ықтималдығы:</span>
+                            <span id="intProbPercent" class="text-amber-400 text-sm">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                            <div id="intProbBar" class="bg-amber-500 h-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div id="intAnalysisOutput" class="bg-slate-800/60 border border-slate-700 p-4 rounded-xl text-sm text-slate-200 leading-relaxed whitespace-pre-wrap min-h-[200px]">
+                        Оқушы кодын сол жақ терезеге қойып, «Кодты тексеру және 3 сұрақ құру» батырмасын басыңыз.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="max-w-6xl mx-auto px-4 py-6 text-center text-xs text-slate-400 border-t border-slate-200 mt-8">
+        Түркістан қаласы білім бөлімі • «28 мектеп-лицей» КММ • Информатика және жасанды интеллект пәні • Фаиз Айгүл Сембайқызы
+    </footer>
+
+    <script>
+        // --- 1. API КІЛТ БАСҚАРУ ---
+        function getSavedApiKey() {
+            try {
+                return localStorage.getItem('ai_mentor_gemini_api_key') || '';
+            } catch (e) {
+                return '';
+            }
+        }
+
+        function updateApiBadge() {
+            const key = getSavedApiKey();
+            const label = document.getElementById('apiStatusLabel');
+            if (!label) return;
+            if (key) {
+                label.innerText = currentUiLang === 'ru' ? 'API Активен ✓' : 'API Белсенді ✓';
+            } else {
+                label.innerText = currentUiLang === 'ru' ? 'API Ключ (Демо)' : 'API Кілт (Демо)';
+            }
+        }
+
+        function openApiModal() {
+            document.getElementById('apiKeyInput').value = getSavedApiKey();
+            document.getElementById('apiModal').classList.remove('hidden');
+        }
+
+        function closeApiModal() {
+            document.getElementById('apiModal').classList.add('hidden');
+        }
+
+        function saveApiKey() {
+            const val = document.getElementById('apiKeyInput').value.trim();
+            try {
+                if (val) {
+                    localStorage.setItem('ai_mentor_gemini_api_key', val);
+                } else {
+                    localStorage.removeItem('ai_mentor_gemini_api_key');
+                }
+            } catch (e) {}
+            updateApiBadge();
+            closeApiModal();
+        }
+
+        function clearApiKey() {
+            document.getElementById('apiKeyInput').value = '';
+            try {
+                localStorage.removeItem('ai_mentor_gemini_api_key');
+            } catch (e) {}
+            updateApiBadge();
+        }
+
+        // --- 2. ҚОЙЫНДЫЛАР ЖӘНЕ ТІЛ АУЫСТЫРУ (ҚАЗ / РУС) ---
+        let currentLang = 'python';
+        let currentUiLang = 'kk';
+
+        const uiTranslations = {
+            kk: {
+                hdrSubtitle: "Түркістан қаласы • «28 мектеп-лицей» КММ • Фаиз Айгүл Сембайқызы",
+                hdrScoreLabel: "Жинаған ұпай:",
+                tabConstructor: "R-T-F Промпт Конструкторы",
+                tabTrainer: "Олимпиадалық Тренажер",
+                tabGuide: "6–11 сынып Оқулық қоры",
+                tabIntegrity: "Академиялық адалдық",
+                intBadgeText: "Мұғалімге арналған бақылау құралы",
+                intTitle: "Академиялық адалдық және ЖИ-код детекторы",
+                intDesc: "Оқушы тапсырған кодтың өз бетімен жазылғанын немесе ЖИ-ден көшірілгенін тексеріп, 3 бақылау сұрағын алыңыз.",
+                intCodeLabel: "Оқушының Python кодын қойыңыз:",
+                intSampleAiBtn: "1-үлгі: ЖИ жазған код",
+                intSampleStuBtn: "2-үлгі: Оқушы коды",
+                intRunBtnText: "Кодты тексеру және 3 сұрақ құру",
+                intResultHeader: "Код-аудит нәтижесі",
+                intStatusText: "Тексеруге дайын",
+                intProbLabel: "ЖИ жазу ықтималдығы:",
+                intDefaultMsg: "Оқушы кодын сол жақ терезеге қойып, «Кодты тексеру және 3 сұрақ құру» батырмасын басыңыз."
+            },
+            ru: {
+                hdrSubtitle: "г. Туркестан • КГУ «Школа-лицей №28» • Фаиз Айгүл Сембайқызы",
+                hdrScoreLabel: "Набрано баллов:",
+                tabConstructor: "Конструктор промптов R-T-F",
+                tabTrainer: "Олимпиадный тренажер",
+                tabGuide: "Учебник Python 6–11 кл.",
+                tabIntegrity: "Академическая честность",
+                intBadgeText: "Инструмент контроля для учителя",
+                intTitle: "Академическая честность и детектор ИИ-кода",
+                intDesc: "Проверьте, написал ли ученик код самостоятельно или скопировал у ИИ, и получите 3 контрольных вопроса.",
+                intCodeLabel: "Вставьте Python-код ученика:",
+                intSampleAiBtn: "Пример 1: Код от ИИ",
+                intSampleStuBtn: "Пример 2: Код ученика",
+                intRunBtnText: "Проверить код и создать 3 вопроса",
+                intResultHeader: "Результат код-аудита",
+                intStatusText: "Готово к проверке",
+                intProbLabel: "Вероятность генерации ИИ:",
+                intDefaultMsg: "Вставьте код ученика слева и нажмите «Проверить код и создать 3 вопроса»."
+            }
+        };
+
+        function setUiLang(lang) {
+            currentUiLang = lang;
+            const t = uiTranslations[lang];
+
+            document.getElementById('uiLang-kk').className = lang === 'kk'
+                ? 'px-3 py-1 rounded-full text-xs font-bold bg-white text-indigo-950 transition-all'
+                : 'px-3 py-1 rounded-full text-xs font-bold text-indigo-100 hover:text-white transition-all';
+            document.getElementById('uiLang-ru').className = lang === 'ru'
+                ? 'px-3 py-1 rounded-full text-xs font-bold bg-white text-indigo-950 transition-all'
+                : 'px-3 py-1 rounded-full text-xs font-bold text-indigo-100 hover:text-white transition-all';
+
+            document.getElementById('hdrSubtitle').innerText = t.hdrSubtitle;
+            document.getElementById('hdrScoreLabel').innerText = t.hdrScoreLabel;
+            document.getElementById('tabText-constructor').innerText = t.tabConstructor;
+            document.getElementById('tabText-trainer').innerText = t.tabTrainer;
+            document.getElementById('tabText-guide').innerText = t.tabGuide;
+            document.getElementById('tabText-integrity').innerText = t.tabIntegrity;
+
+            document.getElementById('intBadgeText').innerText = t.intBadgeText;
+            document.getElementById('intTitle').innerText = t.intTitle;
+            document.getElementById('intDesc').innerText = t.intDesc;
+            document.getElementById('intCodeLabel').innerText = t.intCodeLabel;
+            document.getElementById('intSampleAiBtn').innerText = t.intSampleAiBtn;
+            document.getElementById('intSampleStuBtn').innerText = t.intSampleStuBtn;
+            document.getElementById('intRunBtnText').innerText = t.intRunBtnText;
+            document.getElementById('intResultHeader').innerHTML = `<i class="fas fa-clipboard-check mr-1"></i> ${t.intResultHeader}`;
+            document.getElementById('intStatusText').innerText = t.intStatusText;
+            document.getElementById('intProbLabel').innerText = t.intProbLabel;
+
+            if (document.getElementById('intMeterBox').classList.contains('hidden')) {
+                document.getElementById('intAnalysisOutput').innerText = t.intDefaultMsg;
+            }
+            updateApiBadge();
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('section').forEach(sec => sec.classList.add('hidden'));
+            document.getElementById('section-' + tabName).classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('tab-active');
+                btn.classList.add('text-slate-600');
+            });
+            const activeBtn = document.getElementById('tab-' + tabName);
+            activeBtn.classList.add('tab-active');
+            activeBtn.classList.remove('text-slate-600');
+        }
+
+        // --- 3. R-T-F КОНСТРУКТОРЫ ---
+        const langPresets = {
+            python: {
+                roleIndex: 0,
+                task: "Менің Python тілінде жазған кодымдағы қатені табуға көмектес. Бірақ дайын дұрыс кодты бірден жазып берме, қатенің қай жолда екеніне жанама бағыт бер.",
+                code: "for i in range(5)\n    print(i * 2)"
+            },
+            html: {
+                roleIndex: 1,
+                task: "Менің HTML/CSS кодымдағы құрылымдық қателерді тексер және элементтерді ортаға орналастыру жолын түсіндір.",
+                code: "<div class=\"box\">\n  <h1>Сәлем!</h1>\n</div>"
+            },
+            cpp: {
+                roleIndex: 2,
+                task: "C++ циклінің уақыт күрделілігін талдап, оңтайландыру жолын ұсын.",
+                code: "#include <iostream>\nusing namespace std;\nint main() {\n    for(int i=0; i<10; i++) cout << i;\n}"
+            },
+            sql: {
+                roleIndex: 3,
+                task: "Мына SQL сұранысым неге қате нәтиже беретінін түсіндір.",
+                code: "SELECT name FROM Students WHERE grade = '9' OR '10';"
+            }
+        };
+
+        function setLanguage(lang, btn) {
+            currentLang = lang;
+            document.querySelectorAll('.lang-btn').forEach(b => {
+                b.className = 'lang-btn bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold py-2 px-3 rounded-lg transition-all';
+            });
+            if (btn) {
+                btn.className = 'lang-btn bg-indigo-600 text-white text-xs font-semibold py-2 px-3 rounded-lg transition-all';
+            }
+            const preset = langPresets[lang];
+            document.getElementById('roleSelect').selectedIndex = preset.roleIndex;
+            document.getElementById('taskInput').value = preset.task;
+            document.getElementById('codeInput').value = preset.code;
+            generatePrompt();
+        }
+
+        function generatePrompt() {
+            const role = document.getElementById('roleSelect').value;
+            const task = document.getElementById('taskInput').value.trim();
+            const format = document.getElementById('formatSelect').value;
+            const code = document.getElementById('codeInput').value.trim();
+
+            let text = `[РӨЛ]: ${role}\n\n[ТАПСЫРМА]: ${task}\n\n[ФОРМАТ]: ${format}`;
+            if (code) {
+                text += `\n\n[КОД]:\n\`\`\`${currentLang}\n${code}\n\`\`\``;
+            }
+            document.getElementById('promptOutput').innerText = text;
+        }
+
+        function copyPrompt() {
+            const text = document.getElementById('promptOutput').innerText;
+            const temp = document.createElement('textarea');
+            temp.value = text;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+
+            const btn = document.getElementById('copyBtn');
+            btn.innerHTML = '<i class="fas fa-check"></i> Көшірілді!';
+            setTimeout(() => {
+                btn.innerHTML = '<i class="far fa-copy"></i> Көшіру';
+            }, 1500);
+        }
+
+        async function runAIPrompt() {
+            const promptText = document.getElementById('promptOutput').innerText;
+            const container = document.getElementById('aiResponseContainer');
+            const outputEl = document.getElementById('aiResponseOutput');
+            const statusEl = document.getElementById('aiStatus');
+            const runBtn = document.getElementById('runAiBtn');
+            const apiKey = getSavedApiKey();
+
+            container.classList.remove('hidden');
+            runBtn.disabled = true;
+            runBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Талдануда...';
+            statusEl.innerText = 'Талдануда...';
+            outputEl.innerText = 'AI-Mentor жауап дайындап жатыр...';
+
+            if (!apiKey) {
+                await new Promise(r => setTimeout(r, 500));
+                outputEl.innerText =
+                    "💡 [AI-Mentor Тәлімгерлік Кеңесі — Демо-режим]:\n\n" +
+                    "1. Бағыттаушы кеңес: Кодыңыздың бірінші жолындағы цикл/шарт тақырыбының соңында қандай тыныс белгісі (:) қойылуы керек екенін тексеріңіз.\n" +
+                    "2. Тексеру: Қатені түзеткен соң, кодты іске қосып, шыққан мәндерді қолмен есептеген мәндермен салыстырыңыз.\n\n" +
+                    "❓ Бақылау сұрағы: Жазған алгоритміңіз ең кіші және ең үлкен шекаралық мәндерде қалай жұмыс істейді?\n\n" +
+                    "(Нақты Gemini ЖИ жауабын қосу үшін жоғарғы оң жақтағы 'API Кілт' батырмасын басып, кілтіңізді сақтаңыз).";
+                statusEl.innerText = 'Демо-жауап ✓';
+                runBtn.disabled = false;
+                runBtn.innerHTML = '<i class="fas fa-play"></i> ЖИ-ден жауап алу';
+                return;
+            }
+
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: promptText }] }],
+                        systemInstruction: {
+                            parts: [{ text: "Сен информатика мұғалімі және AI-Mentor тәлімгерісің. Дайын кодты бірден бермей, оқушыға бағыттаушы сұрақтар мен түсіндірмелер арқылы көмектес." }]
+                        }
+                    })
+                });
+                const data = await res.json();
+                outputEl.innerText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'API кілтін немесе сұранысты тексеріңіз.';
+                statusEl.innerText = 'Дайын ✓';
+            } catch (err) {
+                outputEl.innerText = 'Желі немесе API кілт қатесі орын алды.';
+                statusEl.innerText = 'Қате';
+            }
+
+            runBtn.disabled = false;
+            runBtn.innerHTML = '<i class="fas fa-play"></i> ЖИ-ден жауап алу';
+        }
+
+        // --- 4. PYTHON ОЛИМПИАДАЛЫҚ ТРЕНАЖЕР ЖӘНЕ ЕСЕПКЕ САЙ ТЕСТ ---
+        let score = 0;
+        const answeredCases = new Set();
+
+        const olympPresets = {
+            tl: {
+                problem: "N <= 10^5 бүтін сандар массиві берілген. Кез келген екі элементтің максималды көбейтіндісін табыңыз. Уақыт шектеуі: 1.0 сек.",
+                code: "n = int(input())\na = list(map(int, input().split()))\nans = -10**18\nfor i in range(n):\n    for j in range(i+1, n):\n        ans = max(ans, a[i] * a[j])\nprint(ans)"
+            },
+            binary: {
+                problem: "Сұрыпталған N <= 10^5 элементтен тұратын массивте X санының бірінші кездесетін индексін табыңыз.",
+                code: "l, r = 0, len(a) - 1\nwhile l < r:\n    mid = (l + r) // 2\n    if a[mid] < x:\n        l = mid\n    else:\n        r = mid\nprint(l)"
+            },
+            dp: {
+                problem: "N баспалдақ бар. Бір қадамда 1 немесе 2 баспалдақ аттауға болады. N-ші баспалдаққа жетудің неше тәсілі бар? (N <= 10^5)",
+                code: "def ways(n):\n    if n <= 2: return n\n    return ways(n-1) + ways(n-2)\nprint(ways(int(input())))"
+            }
+        };
+
+        const defaultOlympiadQuestions = [
+            {
+                tag: "1-Сұрақ • Уақыт күрделілігі (Big-O)",
+                question: "Екі қабатты цикл N = 10⁵ болғанда шамамен қанша операция орындайды?",
+                options: [
+                    "А) Шамамен 10⁵ операция",
+                    "Б) Шамамен 5 × 10⁹ операция (Time Limit Exceeded қаупі)",
+                    "В) Шамамен 10² операция"
+                ],
+                correctIndex: 1,
+                correctFeedback: "Дұрыс! N = 10⁵ кезінде O(N²) алгоритмі 1 секундтық шектеуден асып кетеді.",
+                wrongFeedback: "Қате. Екі қабатты цикл N*(N-1)/2 рет орындалып, N=10⁵ болғанда миллиардтаған қадам жасайды."
+            },
+            {
+                tag: "2-Сұрақ • Шеткі жағдай (Edge Case)",
+                question: "Екі санның максималды көбейтіндісін табуда қандай жағдайды ескеру қажет?",
+                options: [
+                    "А) Екі теріс санның көбейтіндісі үлкен оң сан беретінін",
+                    "Б) Тек жұп сандарды таңдауды",
+                    "В) Массивті кері аударуды"
+                ],
+                correctIndex: 0,
+                correctFeedback: "Тамаша! Екі кіші теріс санның көбейтіндісі үлкен оң сан бере алады.",
+                wrongFeedback: "Ойланыңыз: (-100) * (-50) = +5000 оң сан береді!"
+            },
+            {
+                tag: "3-Сұрақ • Алгоритмді оңтайландыру",
+                question: "Есепті O(N) уақытта шешудің тиімді тәсілі қайсы?",
+                options: [
+                    "А) Bubble Sort қолдану",
+                    "Б) Бір циклде max1, max2 және min1, min2 табу",
+                    "В) Барлық жұптарды тізімге сақтау"
+                ],
+                correctIndex: 1,
+                correctFeedback: "Дәл солай! Бір өту арқылы O(N) уақытта шешуге болады.",
+                wrongFeedback: "Бізге массивті бір ғана рет шолып өтетін O(N) тәсілі қажет."
+            },
+            {
+                tag: "4-Сұрақ • ЖИ-ге дұрыс промпт",
+                question: "Time Limit алғанда ЖИ-ге қандай сұраныс жазған дұрыс?",
+                options: [
+                    "А) «Есептің дайын кодын жазып бер.»",
+                    "Б) «N<=10^5 шектеуін ескеріп, дайын код бермей O(N) идеясына бағыт бер.»",
+                    "В) «Код неге баяу?»"
+                ],
+                correctIndex: 1,
+                correctFeedback: "Керемет! Дайын код сұрамай, нақты шектеулерді көрсетіп бағыт сұрау тиімді.",
+                wrongFeedback: "Дайын кодты көшіру олимпиадалық ойлауды дамытпайды."
+            },
+            {
+                tag: "5-Сұрақ • Жад күрделілігі",
+                question: "Тек бірнеше айнымалы қолдансақ, қосымша жад күрделілігі қандай болады?",
+                options: [
+                    "А) O(N²)",
+                    "Б) O(N)",
+                    "В) O(1) — тұрақты жад"
+                ],
+                correctIndex: 2,
+                correctFeedback: "Дұрыс! Тұрақты сандық айнымалылар қолданғанда жад күрделілігі O(1) болады.",
+                wrongFeedback: "Қосымша массив құрмасақ, жад шығыны N-ге тәуелді болмайды — O(1)."
+            }
+        ];
+
+        let currentQuestions = [...defaultOlympiadQuestions];
+
+        function setOlympPreset(key) {
+            document.getElementById('olympProblemInput').value = olympPresets[key].problem;
+            document.getElementById('olympCodeInput').value = olympPresets[key].code;
+        }
+
+        function buildLocalAdaptiveAnalysis(problem, code) {
+            const lowerProb = problem.toLowerCase();
+            const lowerCode = code.toLowerCase();
+            const hasNestedLoop = (code.match(/\bfor\b/g) || []).length >= 2;
+            const hasRecursion = /\bdef\s+(\w+)\s*\([^)]*\)\s*:[\s\S]*\b\1\s*\(/.test(code);
+
+            let complexity = hasNestedLoop ? "O(N²)" : (hasRecursion ? "Экспоненциалды / Рекурсивті" : "O(N) немесе O(log N)");
+            let tip = hasNestedLoop
+                ? "Екі қабатты цикл N=10^5 кезінде уақыт шектеуінен асып кетуі мүмкін. Бір өту (O(N)) немесе сұрыптау/бинарлық іздеу идеясын ойланыңыз."
+                : (hasRecursion
+                    ? "Қайталанатын шақырулар болса, мемоизация немесе динамикалық бағдарламалау кестесін қолдануды қарастырыңыз."
+                    : "Алгоритм құрылымы жақсы; енді шеткі мәндерді (N=0, N=1, теріс сандар, индекстің шығып кетуі) тексеріңіз.");
+
+            const analysisText =
+                `📊 Олимпиадалық талдау:\n` +
+                `• Есеп контексті: ${problem || 'Көрсетілмеген'}\n` +
+                `• Кодтың шамаланған күрделілігі: ${complexity}\n` +
+                `• Бағыттаушы кеңес: ${tip}\n` +
+                `• Тексерілетін Edge Cases: минималды N, максималды N, қайталанатын және шекаралық мәндер.`;
+
+            const adaptedQuestions = [
+                {
+                    tag: "1-Сұрақ • Есеп шарты мен Уақыт күрделілігі",
+                    question: `«${problem.slice(0, 85)}${problem.length > 85 ? '...' : ''}» шарты бойынша ағымдағы кодтың уақыт күрделілігі қандай?`,
+                    options: [
+                        `А) ${complexity} — шектеуге сәйкестігін тексеру қажет`,
+                        "Б) Әрқашан O(1) уақытта орындалады",
+                        "В) Уақыт шектеуі есепте мүлде ескерілмейді"
+                    ],
+                    correctIndex: 0,
+                    correctFeedback: `Дұрыс! Кодтың күрделілігін (${complexity}) есептегі N шектеуімен салыстыру маңызды.`,
+                    wrongFeedback: "Алдымен циклдар немесе рекурсия санына қарап, уақыт күрделілігін анықтаңыз."
+                },
+                {
+                    tag: "2-Сұрақ • Кодтағы осал/шеткі нүкте",
+                    question: lowerCode.includes('for') || lowerCode.includes('while')
+                        ? "Цикл немесе шартты өңдегенде қандай шеткі жағдай (Edge Case) қателік тудыруы мүмкін?"
+                        : "Функция немесе өрнекті орындағанда ең алдымен қандай шеткі жағдайды тексеру керек?",
+                    options: [
+                        "А) Ең кіші (0, 1) және ең үлкен шекаралық мәндер",
+                        "Б) Тек орташа сандар ғана",
+                        "В) Шеткі жағдайлар тексерілмейді"
+                    ],
+                    correctIndex: 0,
+                    correctFeedback: "Тамаша! Олимпиада есептеріндегі жасырын тесттердің көбі шекаралық мәндерге құрылады.",
+                    wrongFeedback: "Шекаралық мәндер (мысалы, N=1 немесе бос/қысқа массив) жиі ерекше жағдай тудырады."
+                },
+                {
+                    tag: "3-Сұрақ • Оңтайландыру бағыты",
+                    question: "Осы есептің шешімін жақсарту үшін қандай қадам жасаған дұрыс?",
+                    options: [
+                        "А) Кездейсоқ сандар арқылы жауап табу",
+                        "Б) Артық есептеулерді қысқартып, алгоритмдік идеяны нақтылау",
+                        "В) Кодты қайта-қайта көшіру"
+                    ],
+                    correctIndex: 1,
+                    correctFeedback: "Дәл солай! Алгоритмдік логиканы нақтылау мен артық қадамдарды азайту ең дұрыс жол.",
+                    wrongFeedback: "Алгоритмнің логикалық қадамдарын талдап, артық есептеуді азайту қажет."
+                },
+                {
+                    tag: "4-Сұрақ • Осы есепке R-T-F промпт",
+                    question: "Дәл осы есеп бойынша ЖИ-ден қалай көмек сұраған тиімді?",
+                    options: [
+                        "А) «Есептің дайын кодын бер»",
+                        "Б) «Осы есеп шарты мен менің кодымды талдап, дайын код бермей қате/баяу тұсына бағыт бер»",
+                        "В) «Бәрін өзің жазып бітір»"
+                    ],
+                    correctIndex: 1,
+                    correctFeedback: "Керемет! Нақты есеп шарты мен өз кодыңызды салыстырып бағыт сұрау — ең тиімді тәсіл.",
+                    wrongFeedback: "Дайын кодты сұрау өз бетіңізше алгоритм құру дағдысын тежейді."
+                },
+                {
+                    tag: "5-Сұрақ • Өзін-өзі тексеру",
+                    question: "Кодты тапсырар алдында соңғы тексеруде не істеу керек?",
+                    options: [
+                        "А) Тек бір мысалмен шектелу",
+                        "Б) Есептегі шектеулер мен шеткі тесттерде нәтижені қайта тексеру",
+                        "В) Тексермей жіберу"
+                    ],
+                    correctIndex: 1,
+                    correctFeedback: "Өте дұрыс! Түрлі тесттермен тексеру сенімді нәтиже береді.",
+                    wrongFeedback: "Әрқашан бірнеше тестпен (соның ішінде шеткі тесттермен) тексерген жөн."
+                }
+            ];
+
+            return { analysisText, adaptedQuestions };
+        }
+
+        async function runOlympiadCoach() {
+            const problem = document.getElementById('olympProblemInput').value.trim();
+            const code = document.getElementById('olympCodeInput').value.trim();
+            const box = document.getElementById('olympCoachOutputBox');
+            const resultEl = document.getElementById('olympCoachResult');
+            const statusEl = document.getElementById('olympCoachStatus');
+            const btn = document.getElementById('olympCoachBtn');
+            const apiKey = getSavedApiKey();
+
+            box.classList.remove('hidden');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Талдануда...';
+            statusEl.innerText = 'Талдануда...';
+
+            if (!apiKey) {
+                await new Promise(r => setTimeout(r, 400));
+                const localRes = buildLocalAdaptiveAnalysis(problem, code);
+                resultEl.innerText = localRes.analysisText;
+                statusEl.innerText = 'Демо-талдау & Тест дайын ✓';
+                currentQuestions = localRes.adaptedQuestions;
+                renderDynamicQuiz(currentQuestions);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-microchip"></i> Кодты талдау және Есепке сай Тест құру';
+                return;
+            }
+
+            try {
+                const systemPrompt = "Сен информатикадан олимпиадалық бағдарламалау жаттықтырушысысың. Оқушыға дайын Python кодын берме! 1) Оқушының есебі мен кодына қазақ тілінде Big-O және шеткі жағдайлар бойынша талдау жаса; 2) Дәл осы есепке сай 5 тест сұрағын JSON форматында қайтар.";
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Есеп:\n${problem}\n\nКод:\n${code}` }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "OBJECT",
+                                properties: {
+                                    coachAnalysis: { type: "STRING" },
+                                    questions: {
+                                        type: "ARRAY",
+                                        items: {
+                                            type: "OBJECT",
+                                            properties: {
+                                                tag: { type: "STRING" },
+                                                question: { type: "STRING" },
+                                                options: { type: "ARRAY", items: { type: "STRING" } },
+                                                correctIndex: { type: "INTEGER" },
+                                                correctFeedback: { type: "STRING" },
+                                                wrongFeedback: { type: "STRING" }
+                                            },
+                                            required: ["tag", "question", "options", "correctIndex", "correctFeedback", "wrongFeedback"]
+                                        }
+                                    }
+                                },
+                                required: ["coachAnalysis", "questions"]
+                            }
+                        }
+                    })
+                });
+                const data = await res.json();
+                const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                const parsed = JSON.parse(raw);
+                resultEl.innerText = parsed.coachAnalysis;
+                statusEl.innerText = 'Дайын ✓';
+                if (Array.isArray(parsed.questions) && parsed.questions.length > 0) {
+                    currentQuestions = parsed.questions.slice(0, 5);
+                    renderDynamicQuiz(currentQuestions);
+                }
+            } catch (err) {
+                const fallback = buildLocalAdaptiveAnalysis(problem, code);
+                resultEl.innerText = fallback.analysisText;
+                statusEl.innerText = 'Резервтік талдау ✓';
+                currentQuestions = fallback.adaptedQuestions;
+                renderDynamicQuiz(currentQuestions);
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-microchip"></i> Кодты талдау және Есепке сай Тест құру';
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.innerText = str;
+            return div.innerHTML;
+        }
+
+        function renderDynamicQuiz(list) {
+            score = 0;
+            answeredCases.clear();
+            document.getElementById('userScore').innerText = '0';
+            document.getElementById('maxScoreLabel').innerText = String(list.length * 10);
+            document.getElementById('certBox').classList.add('hidden');
+            document.getElementById('certificateCard').classList.add('hidden');
+
+            const container = document.getElementById('dynamicCasesContainer');
+            container.innerHTML = '';
+
+            list.forEach((q, idx) => {
+                const id = idx + 1;
+                const card = document.createElement('div');
+                card.className = 'case-card bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3';
+
+                const optsHtml = q.options.map((opt, oIdx) => {
+                    const isCorr = oIdx === q.correctIndex ? 1 : 0;
+                    return `<button type="button" onclick="checkAnswer(${id}, ${isCorr}, this)" class="option-btn w-full text-left p-3 rounded-xl border border-slate-300 text-xs sm:text-sm hover:border-indigo-400 transition-all">${escapeHtml(opt)}</button>`;
+                }).join('');
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">${escapeHtml(q.tag)}</span>
+                        <span class="text-xs text-slate-400">+10 ұпай</span>
+                    </div>
+                    <p class="text-sm font-semibold text-slate-800">${escapeHtml(q.question)}</p>
+                    <div class="space-y-2">${optsHtml}</div>
+                    <div class="feedback hidden"></div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function checkAnswer(id, isCorrect, btn) {
+            if (answeredCases.has(id)) return;
+            answeredCases.add(id);
+
+            const q = currentQuestions[id - 1];
+            const card = btn.closest('.case-card');
+            const buttons = card.querySelectorAll('.option-btn');
+            buttons.forEach(b => b.disabled = true);
+            const fb = card.querySelector('.feedback');
+
+            if (isCorrect === 1) {
+                score += 10;
+                document.getElementById('userScore').innerText = score;
+                btn.classList.add('bg-emerald-50', 'border-emerald-500', 'font-bold', 'text-emerald-900');
+                fb.className = 'feedback p-3 rounded-xl text-xs bg-emerald-100 text-emerald-900';
+                fb.innerText = '✓ ' + q.correctFeedback;
+            } else {
+                btn.classList.add('bg-rose-50', 'border-rose-500', 'text-rose-900');
+                if (buttons[q.correctIndex]) {
+                    buttons[q.correctIndex].classList.add('bg-emerald-50', 'border-emerald-400', 'text-emerald-800');
+                }
+                fb.className = 'feedback p-3 rounded-xl text-xs bg-rose-100 text-rose-900';
+                fb.innerText = '✗ ' + q.wrongFeedback;
+            }
+
+            if (answeredCases.size === currentQuestions.length) {
+                document.getElementById('certBox').classList.remove('hidden');
+            }
+        }
+
+        function resetQuiz() {
+            renderDynamicQuiz(currentQuestions);
+        }
+
+        function showCertificate() {
+            const nameVal = document.getElementById('studentNameInput').value.trim();
+            document.getElementById('certStudentName').innerText = nameVal || 'Жас Информатик';
+            document.getElementById('certFinalScore').innerText = `${score} / ${currentQuestions.length * 10} ұпай`;
+            document.getElementById('certificateCard').classList.remove('hidden');
+        }
+
+        // --- 5. 6–11 СЫНЫП PYTHON ОҚУЛЫҚТАРЫНЫҢ ЕРЕЖЕЛЕРІ МЕН МЫСАЛДАРЫ ---
+        const curriculumData = [
+            {
+                grade: "6",
+                badge: "bg-sky-100 text-sky-800",
+                title: "Айнымалылар, деректер типтері (int, float, str) және input/print",
+                rule: "6-сынып оқулығының ережесі: Айнымалы — жадыдағы шартты атау (әріптен немесе '_' таңбасынан басталады). input() функциясы пернетақтадан енгізілген деректі әрқашан жол (str) түрінде қайтарады; сандық есептеу үшін int() немесе float() түрлендіруі қолданылады.",
+                code: "# Оқулық мысалы: Екі бүтін санның қосындысын есептеу\na = int(input(\"a = \"))\nb = int(input(\"b = \"))\nprint(\"Қосындысы:\", a + b)",
+                prompt: "6-сынып оқулығындағы input() ережесі бойынша, int() қолданбасақ a + b неге 5 + 3 = 8 емес, '53' шығаратынын түсіндір."
+            },
+            {
+                grade: "6",
+                badge: "bg-sky-100 text-sky-800",
+                title: "Бүтін бөлу (//) және бөлу қалдығы (%) амалдары",
+                rule: "6-сынып оқулығының ережесі: '//' операторы бөліндінің бүтін бөлігін, ал '%' операторы бүтін санды бөлгендегі қалдықты береді. Санның цифрларын бөліп алу есептерінде жиі қолданылады.",
+                code: "# Оқулық мысалы: Екі таңбалы санның цифрларының қосындысы\nn = int(input(\"Екі таңбалы сан: \"))\nondyq = n // 10\nbirdik = n % 10\nprint(\"Қосындысы:\", ondyq + birdik)",
+                prompt: "6-сынып есебінде n = 47 болғанда n // 10 және n % 10 қандай мән беретінін түсіндір."
+            },
+            {
+                grade: "7",
+                badge: "bg-indigo-100 text-indigo-800",
+                title: "Шартты операторлар (if – elif – else) және шегініс ережесі",
+                rule: "7-сынып оқулығының ережесі: Шартты өрнектен кейін міндетті түрде қос нүкте (:) қойылады, ал оған бағынатын блок 4 бос орынға шегініспен (indentation) жазылады.",
+                code: "# Оқулық мысалы: Санның оң, теріс немесе нөл екенін анықтау\nx = int(input(\"Санды енгізіңіз: \"))\nif x > 0:\n    print(\"Оң сан\")\nelif x < 0:\n    print(\"Теріс сан\")\nelse:\n    print(\"Нөл\")",
+                prompt: "7-сынып оқулығындағы шартты оператор ережесі бойынша, шегініс (IndentationError) қатесі неге шығатынын түсіндір."
+            },
+            {
+                grade: "7",
+                badge: "bg-indigo-100 text-indigo-800",
+                title: "Логикалық амалдар (and, or, not) және салыстыру операторлары",
+                rule: "7-сынып оқулығының ережесі: 'and' (және) — екі шарт та ақиқат болғанда ғана ақиқат береді; 'or' (немесе) — кемінде біреуі ақиқат болса ақиқат береді; 'not' (емес) — логикалық мәнді кері өзгертеді.",
+                code: "# Оқулық мысалы: Санның [1; 10] аралығына тиістілігін тексеру\ns = int(input(\"Сан: \"))\nif s >= 1 and s <= 10:\n    print(\"Аралыққа тиісті\")\nelse:\n    print(\"Тиісті емес\")",
+                prompt: "7-сынып оқулығындағы логикалық ереже бойынша, [1; 10] аралығында 'and' орнына 'or' жазсақ неліктен қате болатынын түсіндір."
+            },
+            {
+                grade: "8",
+                badge: "bg-emerald-100 text-emerald-800",
+                title: "Параметрлі цикл (for) және range() функциясы",
+                rule: "8-сынып оқулығының ережесі: range(start, stop, step) тізбегі бастапқы мәннен бастап stop мәніне жетпей (stop - 1 дейін) орындалады.",
+                code: "# Оқулық мысалы: 1-ден N-ге дейінгі сандардың қосындысы\nn = int(input(\"N = \"))\ns = 0\nfor i in range(1, n + 1):\n    s += i\nprint(\"Қосынды:\", s)",
+                prompt: "8-сынып оқулығындағы range() ережесі бойынша, range(1, 6) қандай сандарды қамтитынын түсіндір."
+            },
+            {
+                grade: "8",
+                badge: "bg-emerald-100 text-emerald-800",
+                title: "Алдын ала шарты бар цикл (while) және break/continue",
+                rule: "8-сынып оқулығының ережесі: while циклі шарт ақиқат болғанша жұмыс істейді. Шартты өзгертетін қадам болмаса, шексіз цикл туындайды.",
+                code: "# Оқулық мысалы: Санның цифрларының қосындысын табу\nn = int(input(\"n = \"))\nsum_c = 0\nwhile n > 0:\n    sum_c += n % 10\n    n //= 10\nprint(\"Цифрлар қосындысы:\", sum_c)",
+                prompt: "8-сынып оқулығындағы while циклі ережесі бойынша, n = 123 болғанда циклдің әр қадамын көрсет."
+            },
+            {
+                grade: "9",
+                badge: "bg-amber-100 text-amber-800",
+                title: "Бірөлшемді массивтер (Тізімдер — list) және индекстеу",
+                rule: "9-сынып оқулығының ережесі: Массив (тізім) элементтерінің индексі 0-ден басталады. Соңғы элемент индексі len(a) - 1 тең.",
+                code: "# Оқулық мысалы: Массивтің ең үлкен элементін табу\na = [12, 45, 7, 89, 23]\nmx = a[0]\nfor x in a:\n    if x > mx:\n        mx = x\nprint(\"Максимум:\", mx)",
+                prompt: "9-сынып оқулығындағы индекстеу ережесі бойынша, 4 элементті тізімде a[4] неге қате беретінін түсіндір."
+            },
+            {
+                grade: "9",
+                badge: "bg-amber-100 text-amber-800",
+                title: "Массивті сұрыптау (Bubble Sort) және екіөлшемді массивтер",
+                rule: "9-сынып оқулығының ережесі: Екіөлшемді массивте a[i][j] — i-жолдағы және j-бағандағы элемент. Көпіршікті сұрыптауда көршілес элементтер салыстырылады.",
+                code: "# Оқулық мысалы: Көпіршікті сұрыптау (өсу ретімен)\na = [30, 10, 20]\nfor i in range(len(a) - 1):\n    for j in range(len(a) - 1 - i):\n        if a[j] > a[j + 1]:\n            a[j], a[j + 1] = a[j + 1], a[j]\nprint(a)",
+                prompt: "9-сынып оқулығындағы ереже бойынша, [30, 10, 20] тізімі сұрыпталғанда алғашқы орын ауысуды түсіндір."
+            },
+            {
+                grade: "10",
+                badge: "bg-purple-100 text-purple-800",
+                title: "Функциялар (def) және return операторы",
+                rule: "10-сынып оқулығының ережесі: Функция def кілт сөзімен анықталады, ал return операторы есептелген мәнді шақырушы нүктеге қайтарады.",
+                code: "# Оқулық мысалы: Тіктөртбұрыш ауданын есептейтін функция\ndef area(a, b):\n    return a * b\n\nprint(\"Ауданы:\", area(5, 4))",
+                prompt: "10-сынып оқулығындағы функция ережесі бойынша, return мен print() айырмашылығын түсіндір."
+            },
+            {
+                grade: "10",
+                badge: "bg-purple-100 text-purple-800",
+                title: "Жолдық тип (str), кесінділер (Slicing) және сөздіктер (dict)",
+                rule: "10-сынып оқулығының ережесі: Жол (str) — өзгермейтін тип; кесінді s[start:end] жолдың бөлігін алады. Сөздік (dict) 'кілт: мән' жұптарынан тұрады.",
+                code: "# Оқулық мысалы: Сөзді кері жазу және сөздікпен жұмыс\ns = \"Python\"\nprint(\"Керісінше:\", s[::-1])\nscores = {\"Айдана\": 95, \"Данияр\": 88}\nprint(scores)",
+                prompt: "10-сынып оқулығындағы жолдық тип ережесі бойынша, s[::-1] қалай жұмыс істейтінін түсіндір."
+            },
+            {
+                grade: "11",
+                badge: "bg-rose-100 text-rose-800",
+                title: "Рекурсия: базалық жағдай және рекурсивті қадам",
+                rule: "11-сынып оқулығының ережесі: Рекурсивті функцияда тоқтату шарты (базалық жағдай) және шақыруды базалық жағдайға жақындататын қадам болуы шарт.",
+                code: "# Оқулық мысалы: N санының факториалын рекурсиямен табу\ndef fact(n):\n    if n &lt;= 1:\n        return 1\n    return n * fact(n - 1)\n\nprint(\"5! =\", fact(5))",
+                prompt: "11-сынып оқулығындағы рекурсия ережесі бойынша, fact(4) шақырылғанда қандай қадамдар орындалатынын түсіндір."
+            },
+            {
+                grade: "11",
+                badge: "bg-rose-100 text-rose-800",
+                title: "Объектіге бағытталған программалау (ООП): класс және объект",
+                rule: "11-сынып оқулығының ережесі: Класс — нысандардың үлгісі, объект — оның нақты данасы. __init__ конструктор әдісі атрибуттарды баптайды, self объектіге сілтейді.",
+                code: "# Оқулық мысалы: 'Student' класы және объектісі\nclass Student:\n    def __init__(self, name, grade):\n        self.name = name\n        self.grade = grade\n\n    def info(self):\n        return f\"{self.name} — {self.grade}-сынып\"\n\ns1 = Student(\"Айгүл\", 11)\nprint(s1.info())",
+                prompt: "11-сынып оқулығындағы ООП ережесі бойынша, класс, объект және self ұғымдарын мысалмен түсіндір."
+            }
+        ];
+
+        function renderCurriculumList(gradeFilter = 'all') {
+            const list = document.getElementById('pythonCurriculumList');
+            const badge = document.getElementById('curriculumCounterBadge');
+            list.innerHTML = '';
+
+            const items = gradeFilter === 'all'
+                ? curriculumData
+                : curriculumData.filter(d => d.grade === gradeFilter);
+
+            badge.innerText = gradeFilter === 'all'
+                ? `${curriculumData.length} тақырып • 6–11 сынып`
+                : `${items.length} тақырып • ${gradeFilter}-сынып`;
+
+            items.forEach((item) => {
+                const realIdx = curriculumData.indexOf(item);
+                const div = document.createElement('div');
+                div.className = 'border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm';
+                div.innerHTML = `
+                    <button type="button" onclick="toggleCurr(${realIdx})" class="w-full text-left px-5 py-4 bg-slate-50/80 hover:bg-indigo-50/60 flex items-center justify-between gap-3 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-bold px-2.5 py-1 rounded-lg whitespace-nowrap ${item.badge}">${item.grade}-сынып</span>
+                            <span class="font-bold text-slate-800 text-sm sm:text-base">${escapeHtml(item.title)}</span>
+                        </div>
+                        <i id="curr-icon-${realIdx}" class="fas fa-chevron-down text-xs text-slate-400 transition-transform"></i>
+                    </button>
+                    <div id="curr-body-${realIdx}" class="hidden p-5 border-t border-slate-100 space-y-4">
+                        <p class="text-xs sm:text-sm text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-200 leading-relaxed">
+                            <strong class="text-indigo-900">Кітаптағы ереже:</strong> ${escapeHtml(item.rule)}
+                        </p>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <pre class="bg-slate-900 text-emerald-400 p-4 rounded-xl font-mono text-xs overflow-x-auto leading-relaxed">${escapeHtml(item.code)}</pre>
+                            <div class="bg-indigo-50/70 border border-indigo-200 p-4 rounded-xl flex flex-col justify-between gap-3 text-xs">
+                                <div>
+                                    <div class="font-bold uppercase tracking-wider text-indigo-700 mb-1">Оқулық мысалына арналған R-T-F промпт:</div>
+                                    <p class="text-slate-700 leading-relaxed">${escapeHtml(item.prompt)}</p>
+                                </div>
+                                <button type="button" onclick="loadTopicToConstructor(${realIdx})" class="self-start bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3.5 py-2 rounded-lg transition-colors flex items-center gap-1.5">
+                                    <i class="fas fa-magic"></i> Конструкторда сынау
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function toggleCurr(idx) {
+            const body = document.getElementById(`curr-body-${idx}`);
+            const icon = document.getElementById(`curr-icon-${idx}`);
+            const hidden = body.classList.contains('hidden');
+            if (hidden) {
+                body.classList.remove('hidden');
+                icon.classList.add('rotate-180', 'text-indigo-600');
+            } else {
+                body.classList.add('hidden');
+                icon.classList.remove('rotate-180', 'text-indigo-600');
+            }
+        }
+
+        function filterGrade(gradeVal, btn) {
+            document.querySelectorAll('.grade-btn').forEach(b => {
+                b.className = 'grade-btn bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold px-3.5 py-2 rounded-xl transition-all';
+            });
+            btn.className = 'grade-btn bg-indigo-600 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition-all';
+            renderCurriculumList(gradeVal);
+        }
+
+        function loadTopicToConstructor(idx) {
+            const topic = curriculumData[idx];
+            if (!topic) return;
+            const pyBtn = document.querySelector('#langButtons button');
+            setLanguage('python', pyBtn);
+            document.getElementById('taskInput').value = topic.prompt;
+            document.getElementById('codeInput').value = topic.code;
+            generatePrompt();
+            switchTab('constructor');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // --- 6. АКАДЕМИЯЛЫҚ АДАЛДЫҚ (ЖИ-ДЕТЕКТОР) ---
+        function setIntegritySample(type) {
+            const input = document.getElementById('integrityCodeInput');
+            if (type === 'ai') {
+                input.value = `def is_prime(n: int) -> bool:\n    """Checks whether a given integer is a prime number."""\n    if n <= 1:\n        return False\n    for i in range(2, int(n**0.5) + 1):\n        if n % i == 0:\n            return False\n    return True\n\nprint([x for x in range(1, 30) if is_prime(x)])`;
+            } else {
+                input.value = `n = int(input("San engiz: "))\ns = 0\nfor i in range(1, n + 1):\n    if n % i == 0:\n        s = s + 1\nif s == 2:\n    print("Jai san")\nelse:\n    print("Jai san emes")`;
+            }
+        }
+
+        async function runIntegrityCheck() {
+            const code = document.getElementById('integrityCodeInput').value.trim();
+            const grade = document.getElementById('intGradeSelect').value;
+            const btn = document.getElementById('runIntegrityBtn');
+            const statusEl = document.getElementById('intStatusText');
+            const meter = document.getElementById('intMeterBox');
+            const pct = document.getElementById('intProbPercent');
+            const bar = document.getElementById('intProbBar');
+            const out = document.getElementById('intAnalysisOutput');
+            const apiKey = getSavedApiKey();
+
+            if (!code) return;
+            btn.disabled = true;
+            statusEl.innerText = 'Талдануда...';
+
+            const hasAiMarkers = code.includes('->') || code.includes('"""') || code.includes('enumerate(') || code.includes('lambda');
+            const demoProb = hasAiMarkers ? 86 : 19;
+
+            if (!apiKey) {
+                await new Promise(r => setTimeout(r, 400));
+                meter.classList.remove('hidden');
+                pct.innerText = demoProb + '%';
+                bar.style.width = demoProb + '%';
+                bar.className = demoProb >= 50 ? 'bg-rose-500 h-full transition-all duration-500' : 'bg-emerald-500 h-full transition-all duration-500';
+
+                out.innerText = demoProb >= 50
+                    ? `⚠️ ЖИ-генерация белгілері байқалады (${grade} деңгейі үшін күрделі құрылым/аннотация).\n\nОқушыға қойылатын 3 бақылау сұрағы:\n1. Кодтағы шарттар мен цикл неліктен дәл осы шекараға дейін орындалады?\n2. Егер кіріске ең кіші немесе ең үлкен мән берілсе, программа не шығарады?\n3. Осы есепті өзіңіздің қарапайым тіліңізбен түсіндіріп бере аласыз ба?`
+                    : `✅ Код оқушының өз деңгейіне сәйкес жазылғанға ұқсайды.\n\nОқушыға қойылатын 3 бақылау сұрағы:\n1. Негізгі айнымалылардың бастапқы мәні неге осылай алынды?\n2. Цикл ішіндегі шарт нені тексереді?\n3. Есепті басқа тәсілмен қалай шығаруға болар еді?`;
+
+                statusEl.innerText = 'Демо-аудит ✓';
+                btn.disabled = false;
+                return;
+            }
+
+            try {
+                const sysPrompt = currentUiLang === 'ru'
+                    ? `Ты эксперт по академической честности для учителя информатики (${grade}). Оцени вероятность генерации ИИ (0-100) и напиши краткий анализ + 3 контрольных вопроса ученику на русском языке.`
+                    : `Сен информатика мұғаліміне арналған Академиялық Адалдық сарапшысысың (${grade}). Кодтың ЖИ-мен жазылу ықтималдығын (0-100) бағалап, қазақ тілінде талдау және оқушыға қойылатын 3 бақылау сұрағын жаз.`;
+
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Сынып: ${grade}\nКод:\n${code}` }] }],
+                        systemInstruction: { parts: [{ text: sysPrompt }] },
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "OBJECT",
+                                properties: {
+                                    aiProbability: { type: "INTEGER" },
+                                    auditReport: { type: "STRING" }
+                                },
+                                required: ["aiProbability", "auditReport"]
+                            }
+                        }
+                    })
+                });
+                const data = await res.json();
+                const parsed = JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text);
+                const prob = Math.min(100, Math.max(0, parsed.aiProbability));
+
+                meter.classList.remove('hidden');
+                pct.innerText = prob + '%';
+                bar.style.width = prob + '%';
+                bar.className = prob >= 50 ? 'bg-rose-500 h-full transition-all duration-500' : 'bg-emerald-500 h-full transition-all duration-500';
+                out.innerText = parsed.auditReport;
+                statusEl.innerText = 'Аудит дайын ✓';
+            } catch (err) {
+                out.innerText = 'Тексеру кезінде қате орын алды.';
+                statusEl.innerText = 'Қате';
+            }
+
+            btn.disabled = false;
+        }
+
+        // --- БАСТАПҚЫ ІСКЕ ҚОСУ ---
+        updateApiBadge();
+        generatePrompt();
+        renderDynamicQuiz(currentQuestions);
+        renderCurriculumList('all');
+    </script>
+</body>
+</html>
